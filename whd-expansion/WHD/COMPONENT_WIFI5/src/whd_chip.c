@@ -833,7 +833,7 @@ whd_result_t whd_chip_specific_init(whd_driver_t whd_driver)
     }
 }
 
-whd_result_t whd_allow_wlan_bus_to_sleep(whd_driver_t whd_driver)
+static whd_result_t whd_allow_wlan_bus_to_sleep_unlocked(whd_driver_t whd_driver)
 {
     /* Get chip number */
     uint16_t wlan_chip_id = whd_chip_get_chip_id(whd_driver);
@@ -879,6 +879,20 @@ whd_result_t whd_allow_wlan_bus_to_sleep(whd_driver_t whd_driver)
             return WHD_SUCCESS;
         }
     }
+}
+
+/* The shared BT path can wake/access the backplane while the WLAN thread
+ * sleeps it. Protect the state flag AND clock/KSO transition with the same
+ * recursive mutex as backplane I/O; a transfer-only lock leaves a stale
+ * bus-is-up flag if another owner runs between the flag and hardware write.
+ * WHD_BACKPLANE_LOCK is a no-op outside the Zephyr shared-bus integration. */
+whd_result_t whd_allow_wlan_bus_to_sleep(whd_driver_t whd_driver)
+{
+    whd_result_t result;
+    WHD_BACKPLANE_LOCK();
+    result = whd_allow_wlan_bus_to_sleep_unlocked(whd_driver);
+    WHD_BACKPLANE_UNLOCK();
+    return result;
 }
 
 whd_result_t whd_wifi_read_wlan_log(whd_driver_t whd_driver, char *buffer, uint32_t buffer_size)
@@ -989,7 +1003,7 @@ whd_result_t whd_wifi_read_fw_capabilities(whd_interface_t ifp)
     return WHD_SUCCESS;
 }
 
-whd_result_t whd_ensure_wlan_bus_is_up(whd_driver_t whd_driver)
+static whd_result_t whd_ensure_wlan_bus_is_up_unlocked(whd_driver_t whd_driver)
 {
     uint8_t csr = 0;
     uint32_t attempts = ( uint32_t )WLAN_BUS_UP_ATTEMPTS;
@@ -1091,6 +1105,20 @@ whd_result_t whd_ensure_wlan_bus_is_up(whd_driver_t whd_driver)
             }
         }
     }
+}
+
+/* The shared BT path can wake/access the backplane while the WLAN thread
+ * sleeps it. Protect the state flag AND clock/KSO transition with the same
+ * recursive mutex as backplane I/O; a transfer-only lock leaves a stale
+ * bus-is-up flag if another owner runs between the flag and hardware write.
+ * WHD_BACKPLANE_LOCK is a no-op outside the Zephyr shared-bus integration. */
+whd_result_t whd_ensure_wlan_bus_is_up(whd_driver_t whd_driver)
+{
+    whd_result_t result;
+    WHD_BACKPLANE_LOCK();
+    result = whd_ensure_wlan_bus_is_up_unlocked(whd_driver);
+    WHD_BACKPLANE_UNLOCK();
+    return result;
 }
 
 static whd_bool_t whd_is_fw_sr_capable(whd_driver_t whd_driver)
