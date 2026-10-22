@@ -329,7 +329,7 @@ whd_result_t whd_bus_mem_bytes(whd_driver_t whd_driver, uint8_t direct,
 #endif
 }
 
-whd_result_t whd_bus_transfer_backplane_bytes(whd_driver_t whd_driver, whd_bus_transfer_direction_t direction,
+static whd_result_t whd_bus_transfer_backplane_bytes_unlocked(whd_driver_t whd_driver, whd_bus_transfer_direction_t direction,
                                               uint32_t address, uint32_t size, uint8_t *data)
 {
     whd_buffer_t pkt_buffer = NULL;
@@ -425,4 +425,15 @@ done:
     CHECK_RETURN(result);
 
     return WHD_SUCCESS;
+}
+
+whd_result_t whd_bus_transfer_backplane_bytes(whd_driver_t whd_driver, whd_bus_transfer_direction_t direction,
+                                              uint32_t address, uint32_t size, uint8_t *data)
+{
+    whd_result_t result;
+
+    WHD_BACKPLANE_LOCK();
+    result = whd_bus_transfer_backplane_bytes_unlocked(whd_driver, direction, address, size, data);
+    WHD_BACKPLANE_UNLOCK();
+    return result;
 }

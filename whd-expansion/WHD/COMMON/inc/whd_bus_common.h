@@ -25,6 +25,21 @@
 extern "C" {
 #endif
 
+/* A shared WLAN/Bluetooth bus needs one recursive lock around window
+ * selection AND the following data access, not only individual SPI transfers.
+ * Zephyr supplies these hooks when its CYW43 shared-bus driver is enabled.
+ * Other WHD integrations keep their existing single-owner behavior.
+ */
+#if defined(WHD_ZEPHYR) && defined(CONFIG_BT_CYW43_SHARED_BUS)
+extern void whd_bus_lock(void);
+extern void whd_bus_unlock(void);
+#define WHD_BACKPLANE_LOCK() whd_bus_lock()
+#define WHD_BACKPLANE_UNLOCK() whd_bus_unlock()
+#else
+#define WHD_BACKPLANE_LOCK() do { } while (0)
+#define WHD_BACKPLANE_UNLOCK() do { } while (0)
+#endif
+
 #define WHD_BACKPLAIN_BUF_TIMEOUT   (0xFFFFFFFF)
 #define WHD_RX_BUF_TIMEOUT          (10)
 

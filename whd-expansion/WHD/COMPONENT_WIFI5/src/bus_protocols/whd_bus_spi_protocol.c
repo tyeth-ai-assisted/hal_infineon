@@ -939,7 +939,7 @@ whd_result_t whd_bus_spi_read_register_value(whd_driver_t whd_driver, whd_bus_fu
  * Write a value to a register on the backplane
  * Prerequisites: value_length <= 4
  */
-whd_result_t whd_bus_spi_write_backplane_value(whd_driver_t whd_driver, uint32_t address, uint8_t register_length,
+static whd_result_t whd_bus_spi_write_backplane_value_unlocked(whd_driver_t whd_driver, uint32_t address, uint8_t register_length,
                                                uint32_t value)
 {
     CHECK_RETURN(whd_bus_set_backplane_window(whd_driver, address) );
@@ -952,11 +952,22 @@ whd_result_t whd_bus_spi_write_backplane_value(whd_driver_t whd_driver, uint32_t
     return whd_bus_spi_write_register_value(whd_driver, BACKPLANE_FUNCTION, address, register_length, value);
 }
 
+whd_result_t whd_bus_spi_write_backplane_value(whd_driver_t whd_driver, uint32_t address, uint8_t register_length,
+                                               uint32_t value)
+{
+    whd_result_t result;
+
+    WHD_BACKPLANE_LOCK();
+    result = whd_bus_spi_write_backplane_value_unlocked(whd_driver, address, register_length, value);
+    WHD_BACKPLANE_UNLOCK();
+    return result;
+}
+
 /*
  * Read the value of a register on the backplane
  * Prerequisites: value_length <= 4
  */
-whd_result_t whd_bus_spi_read_backplane_value(whd_driver_t whd_driver, uint32_t address, uint8_t register_length,
+static whd_result_t whd_bus_spi_read_backplane_value_unlocked(whd_driver_t whd_driver, uint32_t address, uint8_t register_length,
                                               uint8_t *value)
 {
     *value = 0;
@@ -968,6 +979,17 @@ whd_result_t whd_bus_spi_read_backplane_value(whd_driver_t whd_driver, uint32_t 
         address |= SBSDIO_SB_ACCESS_2_4B_FLAG;
 
     return whd_bus_spi_read_register_value(whd_driver, BACKPLANE_FUNCTION, address, register_length, value);
+}
+
+whd_result_t whd_bus_spi_read_backplane_value(whd_driver_t whd_driver, uint32_t address, uint8_t register_length,
+                                              uint8_t *value)
+{
+    whd_result_t result;
+
+    WHD_BACKPLANE_LOCK();
+    result = whd_bus_spi_read_backplane_value_unlocked(whd_driver, address, register_length, value);
+    WHD_BACKPLANE_UNLOCK();
+    return result;
 }
 
 whd_result_t whd_bus_spi_transfer_bytes(whd_driver_t whd_driver, whd_bus_transfer_direction_t direction,
